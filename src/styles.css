@@ -45,8 +45,8 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .brand-group { display: flex; align-items: center; gap: 12px; }
 .header-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
 .boost-pill { color: #d5dcff; }
-.header-pill.social-pill { border-color: transparent; color: #101b39; background: #f4f6ff; text-decoration: none; box-shadow: 0 8px 22px rgba(152,169,255,.16); transition: transform .18s ease, background .18s ease, box-shadow .18s ease; }
-.header-pill.social-pill:hover { transform: translateY(-2px); background: #fff; box-shadow: 0 11px 28px rgba(152,169,255,.25); }
+.header-pill.social-pill { border: 1px dashed rgba(185,197,255,.34); color: #fff; background: transparent; text-decoration: none; box-shadow: none; transition: transform .18s ease, border-color .18s ease, background .18s ease; }
+.header-pill.social-pill:hover { transform: translateY(-1px); border-color: rgba(255,255,255,.58); background: rgba(255,255,255,.04); }
 .social-pill svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; }
 .social-pill .social-dot { fill: currentColor; stroke: none; }
 

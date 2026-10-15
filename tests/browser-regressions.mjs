@@ -86,9 +86,9 @@ test('self-promo links and project images are available to visitors', async () =
   assert.deepEqual(
     await evaluate(`(() => {
       const style = getComputedStyle(document.querySelector('[data-instagram-link]'));
-      return { background: style.backgroundColor, color: style.color };
+      return { background: style.backgroundColor, borderStyle: style.borderStyle, color: style.color };
     })()`),
-    { background: 'rgb(244, 246, 255)', color: 'rgb(16, 27, 57)' },
+    { background: 'rgba(0, 0, 0, 0)', borderStyle: 'dashed', color: 'rgb(255, 255, 255)' },
   );
   assert.deepEqual(
     await evaluate(`[...document.querySelectorAll('[data-project-link]')].map((link) => link.href)`),
