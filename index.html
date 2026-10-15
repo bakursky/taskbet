@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#07142f">
+  <meta name="description" content="Spinflow — колесо, которое выбирает следующую задачу.">
+  <title>Spinflow — крути и делай</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Spinflow — на главную">
+        <span class="brand-mark" aria-hidden="true"><span></span></span>
+        <span>spinflow</span>
+      </a>
+      <div class="header-pill"><span class="pulse-dot"></span><span id="active-count">0 задач</span></div>
+    </header>
+
+    <section class="hero-copy" aria-labelledby="page-title">
+      <p class="eyebrow">Решай меньше. Делай больше.</p>
+      <h1 id="page-title">Что делать дальше?<br><span>Пусть решит колесо.</span></h1>
+    </section>
+
+    <section class="workspace" aria-label="Колесо задач">
+      <article class="panel wheel-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="step-label">01</span>
+            <h2>Крути</h2>
+          </div>
+          <span class="panel-caption">Случайный выбор</span>
+        </div>
+
+        <div class="wheel-stage">
+          <div class="wheel-glow" aria-hidden="true"></div>
+          <div class="pointer" aria-hidden="true"><span></span></div>
+          <svg id="wheel" class="wheel" viewBox="0 0 420 420" role="img" aria-label="Колесо активных задач"></svg>
+          <div class="wheel-hub" aria-hidden="true"><span></span></div>
+        </div>
+
+        <button id="spin-button" class="spin-button" type="button" disabled>
+          <span>Крутить колесо</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg>
+        </button>
+        <p class="keyboard-hint"><kbd>Space</kbd> чтобы крутить</p>
+      </article>
+
+      <article class="panel tasks-panel">
+        <div class="panel-heading">
+          <div>
+            <span class="step-label">02</span>
+            <h2>Задачи</h2>
+          </div>
+          <span class="panel-caption">Сегодня</span>
+        </div>
+
+        <form id="task-form" class="task-form">
+          <label class="sr-only" for="task-input">Новая задача</label>
+          <input id="task-input" maxlength="80" autocomplete="off" placeholder="Добавить задачу…">
+          <button type="submit" aria-label="Добавить задачу">+</button>
+        </form>
+
+        <div id="task-list" class="task-list"></div>
+        <div class="task-summary">
+          <span id="summary-copy"></span>
+          <span class="summary-line"><i id="summary-progress"></i></span>
+        </div>
+      </article>
+    </section>
+
+    <section id="selection-panel" class="selection-panel" aria-live="polite" hidden></section>
+    <p id="status" class="sr-only" role="status" aria-live="polite"></p>
+  </main>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
