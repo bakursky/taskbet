@@ -8,6 +8,15 @@ import {
   toggleTask,
 } from './task-store.js';
 import { chooseSpin, renderWheel } from './wheel.js';
+import {
+  createTimer,
+  formatTime,
+  getRemainingSeconds,
+  parseDuration,
+  pauseTimer,
+  resetTimer,
+  startTimer,
+} from './timer.js';
 
 const elements = {
   activeCount: document.querySelector('#active-count'),
@@ -27,6 +36,8 @@ let tasks = loadTasks(localStorage);
 let rotationDegrees = 0;
 let selectedTaskId = null;
 let isSpinning = false;
+let timerState = null;
+let timerInterval = null;
 
 function taskWord(count) {
   const mod10 = count % 10;
@@ -105,25 +116,116 @@ elements.list.addEventListener('click', (event) => {
 });
 
 function clearSelection() {
+  stopTicker();
   selectedTaskId = null;
+  timerState = null;
   elements.selection.hidden = true;
   elements.selection.replaceChildren();
 }
 
 function showSelection(task) {
   elements.selection.hidden = false;
+  timerState = null;
   elements.selection.innerHTML = `
-    <div class="selection-accent" style="--selection-color:${task.color}"></div>
-    <div class="selection-copy">
-      <span>Колесо решило</span>
-      <strong>${escapeHtml(task.title)}</strong>
+    <div class="focus-task">
+      <span class="focus-dot" style="--selection-color:${task.color}"></span>
+      <div><span>Колесо решило</span><strong>${escapeHtml(task.title)}</strong></div>
     </div>
-    <div class="selection-next">
-      <span>Дальше</span>
-      <b>Выбери время →</b>
+    <div class="duration-picker">
+      <span class="duration-label">Сколько фокуса?</span>
+      <div class="duration-options">
+        ${[15, 25, 45, 60].map((value) => `<button type="button" data-duration="${value}">${value}<small>мин</small></button>`).join('')}
+      </div>
+      <form class="custom-duration">
+        <label for="custom-duration-input">Своё время</label>
+        <div><input id="custom-duration-input" inputmode="numeric" min="1" step="1" placeholder="30"><span>мин</span><button type="submit">Начать</button></div>
+      </form>
     </div>`;
   elements.selection.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
 }
+
+function renderTimer() {
+  const task = tasks.find(({ id }) => id === selectedTaskId);
+  if (!task || !timerState) return;
+  const remaining = getRemainingSeconds(timerState);
+  if (timerState.running && remaining === 0) {
+    timerState = pauseTimer(timerState);
+    stopTicker();
+  }
+  const progress = timerState.durationSeconds ? remaining / timerState.durationSeconds : 0;
+  elements.selection.hidden = false;
+  elements.selection.innerHTML = `
+    <div class="timer-card">
+      <div class="timer-meta"><span class="focus-dot" style="--selection-color:${task.color}"></span><div><span>${remaining === 0 ? 'Фокус-сессия завершена' : 'Сейчас в фокусе'}</span><strong>${escapeHtml(task.title)}</strong></div></div>
+      <div class="timer-display" style="--timer-progress:${progress * 360}deg">
+        <div><strong data-timer-value>${formatTime(remaining)}</strong><span>${timerState.running ? 'не отвлекайся' : remaining === 0 ? 'готово' : 'пауза'}</span></div>
+      </div>
+      <div class="timer-actions">
+        ${remaining > 0 ? `<button class="timer-secondary" type="button" data-timer-action="${timerState.running ? 'pause' : 'resume'}">${timerState.running ? 'Пауза' : 'Продолжить'}</button>` : ''}
+        <button class="timer-secondary" type="button" data-timer-action="reset">Сбросить</button>
+        <button class="timer-primary" type="button" data-timer-action="complete">✓ Готово</button>
+      </div>
+    </div>`;
+}
+
+function stopTicker() {
+  if (timerInterval) window.clearInterval(timerInterval);
+  timerInterval = null;
+}
+
+function startTicker() {
+  stopTicker();
+  timerInterval = window.setInterval(() => {
+    renderTimer();
+    if (!timerState?.running) stopTicker();
+  }, 250);
+}
+
+function beginFocus(value) {
+  const minutes = parseDuration(value);
+  if (minutes === null) {
+    elements.status.textContent = 'Укажи целое число минут больше нуля';
+    elements.selection.querySelector('#custom-duration-input')?.focus();
+    return;
+  }
+  timerState = startTimer(createTimer(minutes));
+  renderTimer();
+  startTicker();
+  elements.status.textContent = `Таймер запущен на ${minutes} минут`;
+}
+
+elements.selection.addEventListener('click', (event) => {
+  const duration = event.target.closest('[data-duration]');
+  if (duration) beginFocus(duration.dataset.duration);
+
+  const action = event.target.closest('[data-timer-action]')?.dataset.timerAction;
+  if (!action || !timerState) return;
+  if (action === 'pause') {
+    timerState = pauseTimer(timerState);
+    stopTicker();
+  }
+  if (action === 'resume') {
+    timerState = startTimer(timerState);
+    startTicker();
+  }
+  if (action === 'reset') {
+    timerState = resetTimer(timerState);
+    stopTicker();
+  }
+  if (action === 'complete') {
+    tasks = toggleTask(tasks, selectedTaskId);
+    clearSelection();
+    persistAndRender('Отлично! Задача выполнена');
+    return;
+  }
+  renderTimer();
+});
+
+elements.selection.addEventListener('submit', (event) => {
+  if (!event.target.matches('.custom-duration')) return;
+  event.preventDefault();
+  beginFocus(event.target.querySelector('input').value);
+});
 
 function finishSpin(task) {
   isSpinning = false;
