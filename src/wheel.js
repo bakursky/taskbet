@@ -65,11 +65,11 @@ export function renderWheel(svg, tasks, rotationDegrees = 0) {
   svg.replaceChildren();
   svg.style.transform = `rotate(${rotationDegrees}deg)`;
 
-  const rim = svgElement('circle', { cx: CENTER, cy: CENTER, r: 196, fill: '#081733', stroke: '#263b67', 'stroke-width': 5 });
+  const rim = svgElement('circle', { cx: CENTER, cy: CENTER, r: 196, fill: '#141414', stroke: '#383838', 'stroke-width': 5 });
   svg.append(rim);
 
   if (!tasks.length) {
-    svg.append(svgElement('circle', { cx: CENTER, cy: CENTER, r: 180, fill: '#14294f', class: 'placeholder' }));
+    svg.append(svgElement('circle', { cx: CENTER, cy: CENTER, r: 180, fill: '#242424', class: 'placeholder' }));
     const empty = svgElement('text', { x: CENTER, y: CENTER, 'text-anchor': 'middle', 'dominant-baseline': 'middle', class: 'wheel-empty' });
     empty.textContent = 'Добавь задачу';
     svg.append(empty);
@@ -82,7 +82,7 @@ export function renderWheel(svg, tasks, rotationDegrees = 0) {
     group.append(svgElement('path', {
       d: describeSector(index, tasks.length, 180),
       fill: task.color,
-      stroke: '#0d1d3d',
+      stroke: '#202020',
       'stroke-width': 3,
       'stroke-linejoin': 'round',
     }));

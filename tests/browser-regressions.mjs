@@ -84,6 +84,34 @@ test('task mutation controls are disabled throughout a spin', async () => {
   assert.equal(await evaluate(`[...document.querySelectorAll('.task-check,.task-delete,#task-form button')].every((button) => button.disabled)`), true);
 });
 
+test('page and panels use a neutral black and graphite theme', async () => {
+  await resetTasks();
+  const colors = await evaluate(`(() => {
+    const read = (selector) => getComputedStyle(document.querySelector(selector)).backgroundColor;
+    return {
+      body: read('body'),
+      panel: read('.panel'),
+      task: read('.task-row'),
+      wheelRim: getComputedStyle(document.querySelector('.wheel > circle')).fill,
+    };
+  })()`);
+  const channels = (color) => color.match(/\d+/g).slice(0, 3).map(Number);
+  const [bodyR, bodyG, bodyB] = channels(colors.body);
+  const [panelR, panelG, panelB] = channels(colors.panel);
+  const [taskR, taskG, taskB] = channels(colors.task);
+  const [rimR, rimG, rimB] = channels(colors.wheelRim);
+
+  assert.deepEqual([bodyR, bodyG, bodyB], [0, 0, 0]);
+  assert.equal(panelR, panelG);
+  assert.equal(panelG, panelB);
+  assert.ok(panelR > 0 && panelR <= 24);
+  assert.equal(taskR, taskG);
+  assert.equal(taskG, taskB);
+  assert.ok(taskR > panelR);
+  assert.equal(rimR, rimG);
+  assert.equal(rimG, rimB);
+});
+
 test('timer updates preserve keyboard focus', async () => {
   await resetTasks();
   await evaluate(`document.querySelector('#spin-button').click(); true`);
