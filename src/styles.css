@@ -149,6 +149,9 @@ kbd { padding: 2px 6px; border: 1px solid #34486f; border-radius: 4px; backgroun
 .confirm-task:hover { transform: translateY(-2px); box-shadow: 0 16px 34px rgba(100,123,194,.28); }
 .confirm-task span { margin-left: 8px; }
 .compact-focus-task { margin-bottom: 20px; }
+.timer-empty-state { margin: 0; padding: 0; border: 0; }
+.timer-empty-state .focus-dot { --selection-color: #53627f; opacity: .55; }
+.timer-empty-state strong { color: #8d9bbb; }
 .duration-picker { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 18px; }
 .duration-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
 .duration-options button { min-height: 52px; border: 1px solid rgba(185,197,255,.14); border-radius: 12px; color: #e8ebf8; background: #0c1e3d; font-size: 17px; font-weight: 800; cursor: pointer; transition: transform .16s ease, border-color .16s ease, background .16s ease; }

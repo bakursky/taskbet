@@ -157,22 +157,30 @@ elements.list.addEventListener('click', (event) => {
   persistAndRender(button.dataset.action === 'delete' ? 'Задача удалена' : 'Статус задачи изменён');
 });
 
+function renderEmptyTimer() {
+  elements.selection.hidden = false;
+  elements.selection.innerHTML = `
+    <div class="focus-task timer-empty-state">
+      <span class="focus-dot"></span>
+      <div><span>Фокус-таймер</span><strong>Ставок нет</strong></div>
+    </div>`;
+}
+
 function clearSelection() {
   stopTicker();
   selectedTaskId = null;
   timerState = null;
   elements.modal.hidden = true;
   elements.result.hidden = true;
-  elements.selection.hidden = true;
   elements.result.replaceChildren();
-  elements.selection.replaceChildren();
+  renderEmptyTimer();
   document.body.classList.remove('modal-open');
 }
 
 function showSelection(task) {
   elements.modal.hidden = false;
   elements.result.hidden = false;
-  elements.selection.hidden = true;
+  elements.selection.hidden = false;
   timerState = null;
   elements.result.innerHTML = `
     <button class="modal-close" type="button" data-modal-close aria-label="Закрыть">×</button>
@@ -405,4 +413,5 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
+renderEmptyTimer();
 renderTasks();

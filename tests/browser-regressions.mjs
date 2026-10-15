@@ -65,6 +65,14 @@ async function resetTasks() {
   await waitUntil(`document.querySelectorAll('.task-row').length === 4`);
 }
 
+test('Taskbet branding and empty timer panel are visible on load', async () => {
+  await resetTasks();
+  assert.equal(await evaluate(`document.querySelector('.brand span').textContent`), 'Ставки на дело');
+  assert.match(await evaluate(`document.title`), /Taskbet/);
+  assert.equal(await evaluate(`document.querySelector('#selection-panel').hidden`), false);
+  assert.match(await evaluate(`document.querySelector('#selection-panel').textContent`), /Ставок нет/);
+});
+
 test('task titles cannot create executable attributes', async () => {
   await resetTasks();
   await evaluate(`(() => {
@@ -89,7 +97,8 @@ test('timer updates preserve keyboard focus', async () => {
   await evaluate(`document.querySelector('#spin-button').click(); true`);
   await waitUntil(`!document.querySelector('#selection-modal').hidden`, 10000);
   assert.equal(await evaluate(`document.querySelector('#selection-modal').hidden`), false);
-  assert.equal(await evaluate(`document.querySelector('#selection-panel').hidden`), true);
+  assert.equal(await evaluate(`document.querySelector('#selection-panel').hidden`), false);
+  assert.match(await evaluate(`document.querySelector('#selection-panel').textContent`), /Ставок нет/);
   assert.ok(await evaluate(`document.querySelectorAll('.confetti-piece').length`) >= 24);
   assert.match(await evaluate(`document.querySelector('.focus-reaction').textContent`), /ура|фу|погнали|выпало/i);
   await evaluate(`document.querySelector('[data-confirm-task]').click(); true`);
