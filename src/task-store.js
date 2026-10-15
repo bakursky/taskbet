@@ -1,14 +1,14 @@
 export const STORAGE_KEY = 'spinflow.tasks';
 
 export const PALETTE = [
-  '#B9C5FF',
-  '#F4C6D7',
-  '#A8E6CF',
-  '#F7D9A7',
-  '#C9B8F4',
-  '#9ED9E8',
-  '#F2B6A0',
-  '#D8E5A6',
+  '#9EAEFF',
+  '#F3A8C7',
+  '#78D8B8',
+  '#FFD078',
+  '#B694F2',
+  '#67CBE2',
+  '#F59A7B',
+  '#C8DE72',
 ];
 
 export const SAMPLE_TASKS = [
@@ -51,6 +51,7 @@ function isValidTask(task) {
 
 export function loadTasks(storage) {
   try {
+    if (!storage) return cloneSamples();
     const raw = storage.getItem(STORAGE_KEY);
     if (!raw) return cloneSamples();
     const tasks = JSON.parse(raw);
@@ -62,5 +63,11 @@ export function loadTasks(storage) {
 }
 
 export function saveTasks(storage, tasks) {
-  storage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  try {
+    if (!storage) return false;
+    storage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    return true;
+  } catch {
+    return false;
+  }
 }

@@ -1,5 +1,6 @@
 const NS = 'http://www.w3.org/2000/svg';
 const CENTER = 210;
+export const SPIN_DURATION_MS = 6800;
 
 const normalizeDegrees = (degrees) => ((degrees % 360) + 360) % 360;
 const polar = (radius, degrees) => {
@@ -28,6 +29,14 @@ export function getWinningIndex(finalDegrees, count) {
   if (!Number.isInteger(count) || count < 1) throw new RangeError('Wheel requires a task');
   const slice = 360 / count;
   return Math.min(count - 1, Math.floor(normalizeDegrees(-finalDegrees) / slice));
+}
+
+export function getLabelRotation(index, count) {
+  if (!Number.isInteger(count) || count < 1 || index < 0 || index >= count) {
+    throw new RangeError('Invalid wheel label');
+  }
+  const middle = -90 + (index + 0.5) * (360 / count);
+  return middle + 180;
 }
 
 export function chooseSpin(currentDegrees, count, random = Math.random) {
@@ -86,7 +95,7 @@ export function renderWheel(svg, tasks, rotationDegrees = 0) {
       'text-anchor': 'middle',
       'dominant-baseline': 'middle',
       class: 'wheel-label',
-      transform: `rotate(${middle + 90} ${labelPoint.x} ${labelPoint.y})`,
+      transform: `rotate(${getLabelRotation(index, tasks.length)} ${labelPoint.x} ${labelPoint.y})`,
     });
     label.textContent = shortLabel(task.title, tasks.length);
     group.append(label);

@@ -7,7 +7,7 @@ import {
   saveTasks,
   toggleTask,
 } from './task-store.js';
-import { chooseSpin, renderWheel } from './wheel.js';
+import { SPIN_DURATION_MS, chooseSpin, renderWheel } from './wheel.js';
 import {
   createTimer,
   formatTime,
@@ -27,17 +27,36 @@ const elements = {
   status: document.querySelector('#status'),
   summary: document.querySelector('#summary-copy'),
   progress: document.querySelector('#summary-progress'),
+  modal: document.querySelector('#selection-modal'),
   selection: document.querySelector('#selection-panel'),
+  confetti: document.querySelector('#confetti-layer'),
   wheel: document.querySelector('#wheel'),
   wheelStage: document.querySelector('.wheel-stage'),
 };
 
-let tasks = loadTasks(localStorage);
+function getBrowserStorage() {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+const storage = getBrowserStorage();
+let tasks = loadTasks(storage);
 let rotationDegrees = 0;
 let selectedTaskId = null;
 let isSpinning = false;
 let timerState = null;
 let timerInterval = null;
+let confettiTimeout = null;
+
+const REACTIONS = [
+  'Ура! Погнали.',
+  'Фу… зато потом будет легче.',
+  'Выпало — значит судьба.',
+  'Погнали! Без отговорок.',
+];
 
 function taskWord(count) {
   const mod10 = count % 10;
@@ -48,9 +67,21 @@ function taskWord(count) {
 }
 
 function persistAndRender(message = '') {
-  saveTasks(localStorage, tasks);
+  const persisted = saveTasks(storage, tasks);
   renderTasks();
-  if (message) elements.status.textContent = message;
+  if (!persisted) {
+    elements.status.textContent = `${message ? `${message}. ` : ''}Изменения не сохранятся после закрытия вкладки`;
+  } else if (message) {
+    elements.status.textContent = message;
+  }
+}
+
+function setMutationControls(disabled) {
+  elements.input.disabled = disabled;
+  elements.form.querySelector('button').disabled = disabled;
+  elements.list.querySelectorAll('.task-check, .task-delete').forEach((button) => {
+    button.disabled = disabled;
+  });
 }
 
 function renderTasks() {
@@ -70,12 +101,26 @@ function renderTasks() {
     row.className = `task-row${task.completed ? ' is-complete' : ''}${task.id === selectedTaskId ? ' is-selected' : ''}`;
     row.dataset.taskId = task.id;
     row.style.setProperty('--task-color', task.color);
-    row.innerHTML = `
-      <button class="task-check" type="button" data-action="toggle" aria-label="${task.completed ? 'Вернуть' : 'Отметить готовой'}">
-        <span>${task.completed ? '✓' : String(index + 1).padStart(2, '0')}</span>
-      </button>
-      <span class="task-title">${escapeHtml(task.title)}</span>
-      <button class="task-delete" type="button" data-action="delete" aria-label="Удалить ${escapeHtml(task.title)}">×</button>`;
+    const check = document.createElement('button');
+    check.className = 'task-check';
+    check.type = 'button';
+    check.dataset.action = 'toggle';
+    check.setAttribute('aria-label', task.completed ? 'Вернуть' : 'Отметить готовой');
+    const marker = document.createElement('span');
+    marker.textContent = task.completed ? '✓' : String(index + 1).padStart(2, '0');
+    check.append(marker);
+
+    const title = document.createElement('span');
+    title.className = 'task-title';
+    title.textContent = task.title;
+
+    const remove = document.createElement('button');
+    remove.className = 'task-delete';
+    remove.type = 'button';
+    remove.dataset.action = 'delete';
+    remove.setAttribute('aria-label', `Удалить ${task.title}`);
+    remove.textContent = '×';
+    row.append(check, title, remove);
     elements.list.append(row);
   });
 
@@ -85,6 +130,7 @@ function renderTasks() {
   elements.progress.style.width = tasks.length ? `${done / tasks.length * 100}%` : '0%';
   elements.spin.disabled = active.length === 0 || isSpinning;
   renderWheel(elements.wheel, active, rotationDegrees);
+  setMutationControls(isSpinning);
 }
 
 function escapeHtml(value) {
@@ -119,17 +165,21 @@ function clearSelection() {
   stopTicker();
   selectedTaskId = null;
   timerState = null;
+  elements.modal.hidden = true;
   elements.selection.hidden = true;
   elements.selection.replaceChildren();
+  document.body.classList.remove('modal-open');
 }
 
 function showSelection(task) {
+  elements.modal.hidden = false;
   elements.selection.hidden = false;
   timerState = null;
   elements.selection.innerHTML = `
+    <button class="modal-close" type="button" data-modal-close aria-label="Закрыть">×</button>
     <div class="focus-task">
-      <span class="focus-dot" style="--selection-color:${task.color}"></span>
-      <div><span>Колесо решило</span><strong>${escapeHtml(task.title)}</strong></div>
+      <span class="focus-dot"></span>
+      <div><span>Тебе выпало</span><strong data-selected-title></strong><em class="focus-reaction"></em></div>
     </div>
     <div class="duration-picker">
       <span class="duration-label">Сколько фокуса?</span>
@@ -141,7 +191,31 @@ function showSelection(task) {
         <div><input id="custom-duration-input" inputmode="numeric" min="1" step="1" placeholder="30"><span>мин</span><button type="submit">Начать</button></div>
       </form>
     </div>`;
-  elements.selection.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
+  elements.selection.querySelector('.focus-dot').style.setProperty('--selection-color', task.color);
+  elements.selection.querySelector('[data-selected-title]').textContent = task.title;
+  elements.selection.querySelector('.focus-reaction').textContent = REACTIONS[Math.floor(Math.random() * REACTIONS.length)];
+  document.body.classList.add('modal-open');
+  celebrate();
+  elements.selection.querySelector('[data-duration]')?.focus({ preventScroll: true });
+}
+
+function celebrate() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (confettiTimeout) window.clearTimeout(confettiTimeout);
+  elements.confetti.replaceChildren();
+  const colors = [...PALETTE, '#F6F8FF'];
+  for (let index = 0; index < 44; index += 1) {
+    const piece = document.createElement('i');
+    piece.className = 'confetti-piece';
+    piece.style.setProperty('--x', `${8 + Math.random() * 84}vw`);
+    piece.style.setProperty('--drift', `${(Math.random() - 0.5) * 260}px`);
+    piece.style.setProperty('--spin', `${360 + Math.random() * 900}deg`);
+    piece.style.setProperty('--delay', `${Math.random() * 0.3}s`);
+    piece.style.setProperty('--duration', `${1.8 + Math.random() * 1.2}s`);
+    piece.style.setProperty('--confetti-color', colors[index % colors.length]);
+    elements.confetti.append(piece);
+  }
+  confettiTimeout = window.setTimeout(() => elements.confetti.replaceChildren(), 3400);
 }
 
 function renderTimer() {
@@ -154,18 +228,30 @@ function renderTimer() {
   }
   const progress = timerState.durationSeconds ? remaining / timerState.durationSeconds : 0;
   elements.selection.hidden = false;
-  elements.selection.innerHTML = `
-    <div class="timer-card">
-      <div class="timer-meta"><span class="focus-dot" style="--selection-color:${task.color}"></span><div><span>${remaining === 0 ? 'Фокус-сессия завершена' : 'Сейчас в фокусе'}</span><strong>${escapeHtml(task.title)}</strong></div></div>
-      <div class="timer-display" style="--timer-progress:${progress * 360}deg">
-        <div><strong data-timer-value>${formatTime(remaining)}</strong><span>${timerState.running ? 'не отвлекайся' : remaining === 0 ? 'готово' : 'пауза'}</span></div>
-      </div>
-      <div class="timer-actions">
-        ${remaining > 0 ? `<button class="timer-secondary" type="button" data-timer-action="${timerState.running ? 'pause' : 'resume'}">${timerState.running ? 'Пауза' : 'Продолжить'}</button>` : ''}
-        <button class="timer-secondary" type="button" data-timer-action="reset">Сбросить</button>
-        <button class="timer-primary" type="button" data-timer-action="complete">✓ Готово</button>
-      </div>
-    </div>`;
+  let card = elements.selection.querySelector('.timer-card');
+  if (!card) {
+    elements.selection.innerHTML = `
+      <div class="timer-card">
+        <div class="timer-meta"><span class="focus-dot"></span><div><span data-timer-state></span><strong data-timer-task></strong></div></div>
+        <div class="timer-display"><div><strong data-timer-value></strong><span data-timer-caption></span></div></div>
+        <div class="timer-actions">
+          <button class="timer-secondary timer-toggle" type="button" data-timer-action="pause"></button>
+          <button class="timer-secondary" type="button" data-timer-action="reset">Сбросить</button>
+          <button class="timer-primary" type="button" data-timer-action="complete">✓ Готово</button>
+        </div>
+      </div>`;
+    card = elements.selection.querySelector('.timer-card');
+  }
+  card.querySelector('.focus-dot').style.setProperty('--selection-color', task.color);
+  card.querySelector('[data-timer-state]').textContent = remaining === 0 ? 'Фокус-сессия завершена' : 'Сейчас в фокусе';
+  card.querySelector('[data-timer-task]').textContent = task.title;
+  card.querySelector('.timer-display').style.setProperty('--timer-progress', `${progress * 360}deg`);
+  card.querySelector('[data-timer-value]').textContent = formatTime(remaining);
+  card.querySelector('[data-timer-caption]').textContent = timerState.running ? 'не отвлекайся' : remaining === 0 ? 'готово' : 'пауза';
+  const toggle = card.querySelector('.timer-toggle');
+  toggle.hidden = remaining === 0;
+  toggle.dataset.timerAction = timerState.running ? 'pause' : 'resume';
+  toggle.textContent = timerState.running ? 'Пауза' : 'Продолжить';
 }
 
 function stopTicker() {
@@ -195,6 +281,10 @@ function beginFocus(value) {
 }
 
 elements.selection.addEventListener('click', (event) => {
+  if (event.target.closest('[data-modal-close]')) {
+    clearSelection();
+    return;
+  }
   const duration = event.target.closest('[data-duration]');
   if (duration) beginFocus(duration.dataset.duration);
 
@@ -229,6 +319,13 @@ elements.selection.addEventListener('submit', (event) => {
 
 function finishSpin(task) {
   isSpinning = false;
+  if (!getActiveTasks(tasks).some(({ id }) => id === task.id)) {
+    elements.wheel.classList.remove('is-spinning');
+    elements.wheelStage.classList.remove('is-spinning');
+    renderTasks();
+    elements.status.textContent = 'Список задач изменился — крутани ещё раз';
+    return;
+  }
   selectedTaskId = task.id;
   elements.wheel.classList.remove('is-spinning');
   elements.wheelStage.classList.remove('is-spinning');
@@ -243,6 +340,7 @@ function spinWheel() {
   clearSelection();
   isSpinning = true;
   elements.spin.disabled = true;
+  setMutationControls(true);
   const spin = chooseSpin(rotationDegrees, active.length);
   rotationDegrees = spin.finalDegrees;
   const task = active[spin.winningIndex];
@@ -266,11 +364,16 @@ function spinWheel() {
     finishSpin(task);
   };
   elements.wheel.addEventListener('transitionend', complete, { once: true });
-  window.setTimeout(complete, 4700);
+  window.setTimeout(complete, SPIN_DURATION_MS + 400);
 }
 
+elements.wheel.style.setProperty('--spin-duration', `${SPIN_DURATION_MS}ms`);
 elements.spin.addEventListener('click', spinWheel);
 document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !elements.modal.hidden) {
+    clearSelection();
+    return;
+  }
   if (event.code === 'Space' && !/INPUT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)) {
     event.preventDefault();
     spinWheel();

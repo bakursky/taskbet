@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { chooseSpin, describeSector, getWinningIndex } from '../src/wheel.js';
+import { chooseSpin, describeSector, getLabelRotation, getWinningIndex } from '../src/wheel.js';
 
 test('describes valid closed SVG sectors for one, two, and seven slices', () => {
   for (const count of [1, 2, 7]) {
@@ -44,4 +44,11 @@ test('always selects the only active task', () => {
     assert.equal(spin.winningIndex, 0);
     assert.equal(getWinningIndex(spin.finalDegrees, 1), 0);
   }
+});
+
+test('rotates labels radially from the outer edge toward the center', () => {
+  assert.equal(getLabelRotation(0, 4), 135);
+  assert.equal(getLabelRotation(1, 4), 225);
+  assert.equal(getLabelRotation(2, 4), 315);
+  assert.equal(getLabelRotation(3, 4), 405);
 });
