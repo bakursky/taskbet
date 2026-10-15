@@ -8,6 +8,7 @@ import {
   toggleTask,
 } from './task-store.js';
 import { SPIN_DURATION_MS, chooseSpin, renderWheel } from './wheel.js';
+import { playRatchet } from './spin-sound.js';
 import {
   createTimer,
   formatTime,
@@ -371,6 +372,7 @@ function spinWheel() {
 
   elements.wheel.classList.toggle('is-spinning', !reducedMotion);
   elements.wheelStage.classList.toggle('is-spinning', !reducedMotion);
+  if (!reducedMotion) playRatchet(SPIN_DURATION_MS);
   requestAnimationFrame(() => {
     elements.wheel.style.transform = `rotate(${rotationDegrees}deg)`;
   });
