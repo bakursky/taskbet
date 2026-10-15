@@ -1,15 +1,25 @@
 export const STORAGE_KEY = 'spinflow.tasks';
 
 export const PALETTE = [
-  '#8298FF',
-  '#FF83B5',
-  '#49D9AA',
-  '#FFBF3F',
-  '#AB7BFF',
-  '#3BC7EA',
-  '#FF7C58',
-  '#BADA42',
+  '#5B7CFF',
+  '#FF3D8D',
+  '#00D99B',
+  '#FFB000',
+  '#9B4DFF',
+  '#00C7FF',
+  '#FF5A2F',
+  '#B7F000',
 ];
+
+const LEGACY_PALETTE = [
+  '#8298FF', '#FF83B5', '#49D9AA', '#FFBF3F',
+  '#AB7BFF', '#3BC7EA', '#FF7C58', '#BADA42',
+];
+
+const migrateColor = (color) => {
+  const legacyIndex = LEGACY_PALETTE.indexOf(color.toUpperCase());
+  return legacyIndex === -1 ? color : PALETTE[legacyIndex];
+};
 
 export const SAMPLE_TASKS = [
   { id: 'sample-1', title: 'Ответить на письма', color: PALETTE[0], completed: false },
@@ -56,7 +66,11 @@ export function loadTasks(storage) {
     if (!raw) return cloneSamples();
     const tasks = JSON.parse(raw);
     if (!Array.isArray(tasks) || !tasks.every(isValidTask)) return cloneSamples();
-    return tasks.map((task) => ({ ...task, title: normalizeTitle(task.title) }));
+    return tasks.map((task) => ({
+      ...task,
+      title: normalizeTitle(task.title),
+      color: migrateColor(task.color),
+    }));
   } catch {
     return cloneSamples();
   }

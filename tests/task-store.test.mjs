@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  PALETTE,
   SAMPLE_TASKS,
   createTask,
   getActiveTasks,
@@ -61,6 +62,17 @@ test('persists valid tasks and restores the same values', () => {
   const tasks = [{ id: '1', title: 'Задача', color: '#A8E6CF', completed: false }];
   saveTasks(storage, tasks);
   assert.deepEqual(loadTasks(storage), tasks);
+});
+
+test('migrates saved tasks from the previous palette to vivid colors', () => {
+  const stored = [
+    { id: '1', title: 'Первая', color: '#8298FF', completed: false },
+    { id: '2', title: 'Вторая', color: '#FF83B5', completed: true },
+  ];
+  const storage = memoryStorage({ 'spinflow.tasks': JSON.stringify(stored) });
+
+  assert.deepEqual(loadTasks(storage).map(({ color }) => color), ['#5B7CFF', '#FF3D8D']);
+  assert.equal(PALETTE[0], '#5B7CFF');
 });
 
 test('falls back to a fresh copy of sample tasks for corrupt storage', () => {

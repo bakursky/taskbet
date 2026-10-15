@@ -51,7 +51,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
   letter-spacing: -.04em;
 }
 
-.brand-icon { width: 29px; height: 29px; color: #a8b6ff; filter: drop-shadow(0 0 10px rgba(158,174,255,.2)); }
+.brand-icon { width: 29px; height: 29px; color: #ff3b30; filter: drop-shadow(0 0 11px rgba(255,59,48,.42)); }
 
 .header-pill {
   display: flex;

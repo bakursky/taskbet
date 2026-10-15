@@ -112,6 +112,22 @@ test('page and panels use a neutral black and graphite theme', async () => {
   assert.equal(rimG, rimB);
 });
 
+test('wheel and task accents are vivid while the logo is red', async () => {
+  await resetTasks();
+  const accents = await evaluate(`(() => ({
+    taskColors: [...document.querySelectorAll('.task-check')].map((node) => getComputedStyle(node).backgroundColor),
+    logoColor: getComputedStyle(document.querySelector('.brand-icon')).color,
+  }))()`);
+  const channels = (color) => color.match(/\d+/g).slice(0, 3).map(Number);
+
+  for (const color of accents.taskColors) {
+    const rgb = channels(color);
+    assert.ok(Math.max(...rgb) - Math.min(...rgb) >= 150);
+  }
+  const [red, green, blue] = channels(accents.logoColor);
+  assert.ok(red >= 230 && green <= 80 && blue <= 80);
+});
+
 test('timer updates preserve keyboard focus', async () => {
   await resetTasks();
   await evaluate(`document.querySelector('#spin-button').click(); true`);
