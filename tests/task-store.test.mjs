@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   SAMPLE_TASKS,
+  completeTaskWithReward,
   createTask,
   getActiveTasks,
   loadTasks,
@@ -32,6 +33,7 @@ test('creates a serializable task and rejects blank titles', () => {
     title: 'Ответить на письма',
     color: '#B9C5FF',
     completed: false,
+    rewarded: false,
   });
   assert.throws(() => createTask('   ', '#B9C5FF'), /empty/i);
 });
@@ -56,9 +58,20 @@ test('removes a task without mutating input', () => {
   assert.equal(tasks.length, 2);
 });
 
+test('a task grants a boost only on its first completion', () => {
+  const task = { id: '1', title: 'A', color: '#fff', completed: false, rewarded: false };
+  const first = completeTaskWithReward([task], '1');
+  const reopened = toggleTask(first.tasks, '1');
+  const second = completeTaskWithReward(reopened, '1');
+
+  assert.equal(first.earned, true);
+  assert.equal(second.earned, false);
+  assert.equal(second.tasks[0].completed, true);
+});
+
 test('persists valid tasks and restores the same values', () => {
   const storage = memoryStorage();
-  const tasks = [{ id: '1', title: 'Задача', color: '#A8E6CF', completed: false }];
+  const tasks = [{ id: '1', title: 'Задача', color: '#A8E6CF', completed: false, rewarded: false }];
   saveTasks(storage, tasks);
   assert.deepEqual(loadTasks(storage), tasks);
 });

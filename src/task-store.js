@@ -12,10 +12,10 @@ export const PALETTE = [
 ];
 
 export const SAMPLE_TASKS = [
-  { id: 'sample-1', title: 'Ответить на письма', color: PALETTE[0], completed: false },
-  { id: 'sample-2', title: 'Доделать презентацию', color: PALETTE[1], completed: false },
-  { id: 'sample-3', title: 'Пройтись 20 минут', color: PALETTE[2], completed: false },
-  { id: 'sample-4', title: 'Разобрать рабочий стол', color: PALETTE[3], completed: false },
+  { id: 'sample-1', title: 'Ответить на письма', color: PALETTE[0], completed: false, rewarded: false },
+  { id: 'sample-2', title: 'Доделать презентацию', color: PALETTE[1], completed: false, rewarded: false },
+  { id: 'sample-3', title: 'Пройтись 20 минут', color: PALETTE[2], completed: false, rewarded: false },
+  { id: 'sample-4', title: 'Разобрать рабочий стол', color: PALETTE[3], completed: false, rewarded: false },
 ];
 
 const cloneSamples = () => SAMPLE_TASKS.map((task) => ({ ...task }));
@@ -29,7 +29,7 @@ export function normalizeTitle(value) {
 export function createTask(title, color, id = crypto.randomUUID()) {
   const normalized = normalizeTitle(title);
   if (!normalized) throw new Error('Task title cannot be empty');
-  return { id, title: normalized, color, completed: false };
+  return { id, title: normalized, color, completed: false, rewarded: false };
 }
 
 export function getActiveTasks(tasks) {
@@ -38,6 +38,16 @@ export function getActiveTasks(tasks) {
 
 export function toggleTask(tasks, id) {
   return tasks.map((task) => task.id === id ? { ...task, completed: !task.completed } : task);
+}
+
+export function completeTaskWithReward(tasks, id) {
+  let earned = false;
+  const nextTasks = tasks.map((task) => {
+    if (task.id !== id || task.completed) return task;
+    earned = !task.rewarded;
+    return { ...task, completed: true, rewarded: true };
+  });
+  return { tasks: nextTasks, earned };
 }
 
 export function removeTask(tasks, id) {
@@ -56,7 +66,7 @@ export function loadTasks(storage) {
     if (!raw) return cloneSamples();
     const tasks = JSON.parse(raw);
     if (!Array.isArray(tasks) || !tasks.every(isValidTask)) return cloneSamples();
-    return tasks.map((task) => ({ ...task, title: normalizeTitle(task.title) }));
+    return tasks.map((task) => ({ ...task, title: normalizeTitle(task.title), rewarded: Boolean(task.rewarded) }));
   } catch {
     return cloneSamples();
   }

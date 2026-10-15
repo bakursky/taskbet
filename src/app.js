@@ -1,12 +1,14 @@
 import {
   PALETTE,
   createTask,
+  completeTaskWithReward,
   getActiveTasks,
   loadTasks,
   removeTask,
   saveTasks,
   toggleTask,
 } from './task-store.js';
+import { loadBoosts, saveBoosts } from './boost-store.js';
 import { MAX_SPIN_DURATION_MS, SPIN_DURATION_MS, chooseBoost, chooseSpin, extendSpinDeadline, renderWheel } from './wheel.js';
 import { playRatchet } from './spin-sound.js';
 import {
@@ -21,6 +23,7 @@ import {
 
 const elements = {
   activeCount: document.querySelector('#active-count'),
+  boostCount: document.querySelector('#boost-count'),
   form: document.querySelector('#task-form'),
   input: document.querySelector('#task-input'),
   list: document.querySelector('#task-list'),
@@ -46,6 +49,7 @@ function getBrowserStorage() {
 
 const storage = getBrowserStorage();
 let tasks = loadTasks(storage);
+let boosts = loadBoosts(storage);
 let rotationDegrees = 0;
 let selectedTaskId = null;
 let isSpinning = false;
@@ -71,7 +75,7 @@ function taskWord(count) {
 }
 
 function persistAndRender(message = '') {
-  const persisted = saveTasks(storage, tasks);
+  const persisted = saveTasks(storage, tasks) && saveBoosts(storage, boosts);
   renderTasks();
   if (!persisted) {
     elements.status.textContent = `${message ? `${message}. ` : ''}Изменения не сохранятся после закрытия вкладки`;
@@ -130,9 +134,10 @@ function renderTasks() {
 
   const done = tasks.length - active.length;
   elements.activeCount.textContent = `${active.length} ${taskWord(active.length)}`;
+  elements.boostCount.textContent = `Подкрутки: ${boosts}`;
   elements.summary.textContent = tasks.length ? `${done} из ${tasks.length} выполнено` : 'Колесо ждёт';
   elements.progress.style.width = tasks.length ? `${done / tasks.length * 100}%` : '0%';
-  elements.spin.disabled = active.length === 0 || Boolean(isSpinning && spinSession?.deadline >= spinSession?.startedAt + MAX_SPIN_DURATION_MS);
+  elements.spin.disabled = active.length === 0 || Boolean(isSpinning && (boosts === 0 || spinSession?.deadline >= spinSession?.startedAt + MAX_SPIN_DURATION_MS));
   renderWheel(elements.wheel, active, rotationDegrees);
   setMutationControls(isSpinning);
 }
@@ -154,7 +159,16 @@ elements.list.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-action]');
   const row = event.target.closest('[data-task-id]');
   if (!button || !row) return;
-  if (button.dataset.action === 'toggle') tasks = toggleTask(tasks, row.dataset.taskId);
+  if (button.dataset.action === 'toggle') {
+    const task = tasks.find(({ id }) => id === row.dataset.taskId);
+    if (task?.completed) {
+      tasks = toggleTask(tasks, row.dataset.taskId);
+    } else {
+      const result = completeTaskWithReward(tasks, row.dataset.taskId);
+      tasks = result.tasks;
+      if (result.earned) boosts += 1;
+    }
+  }
   if (button.dataset.action === 'delete') tasks = removeTask(tasks, row.dataset.taskId);
   persistAndRender(button.dataset.action === 'delete' ? 'Задача удалена' : 'Статус задачи изменён');
 });
@@ -337,7 +351,9 @@ elements.selection.addEventListener('click', (event) => {
     stopTicker();
   }
   if (action === 'complete') {
-    tasks = toggleTask(tasks, selectedTaskId);
+    const result = completeTaskWithReward(tasks, selectedTaskId);
+    tasks = result.tasks;
+    if (result.earned) boosts += 1;
     clearSelection();
     persistAndRender('Отлично! Задача выполнена');
     return;
@@ -397,6 +413,10 @@ function scheduleSpinFinish(task, delayMs) {
 }
 
 function boostSpin(active) {
+  if (boosts < 1) return;
+  boosts -= 1;
+  saveBoosts(storage, boosts);
+  elements.boostCount.textContent = `Подкрутки: ${boosts}`;
   const now = performance.now();
   spinSession.deadline = extendSpinDeadline(spinSession.startedAt, spinSession.deadline);
   const remainingMs = Math.max(120, spinSession.deadline - now);
@@ -404,7 +424,7 @@ function boostSpin(active) {
   rotationDegrees = boost.finalDegrees;
   const task = active[boost.winningIndex];
   spinSession.task = task;
-  elements.spin.disabled = spinSession.deadline >= spinSession.startedAt + MAX_SPIN_DURATION_MS;
+  elements.spin.disabled = boosts === 0 || spinSession.deadline >= spinSession.startedAt + MAX_SPIN_DURATION_MS;
   animateSpin(rotationDegrees, remainingMs);
   playRatchet(remainingMs);
   scheduleSpinFinish(task, remainingMs);
@@ -420,7 +440,7 @@ function spinWheel() {
   }
   clearSelection();
   isSpinning = true;
-  elements.spin.disabled = false;
+  elements.spin.disabled = boosts === 0;
   elements.spin.querySelector('span').textContent = 'Подкрутить';
   setMutationControls(true);
   const spin = chooseSpin(rotationDegrees, active.length);

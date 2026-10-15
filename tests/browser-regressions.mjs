@@ -94,6 +94,8 @@ test('task mutation controls are disabled throughout a spin', async () => {
 
 test('repeat presses boost the active spin while keeping a ten second cap', async () => {
   await resetTasks();
+  await evaluate(`document.querySelector('.task-check').click(); true`);
+  assert.match(await evaluate(`document.querySelector('#boost-count').textContent`), /1/);
   await evaluate(`document.querySelector('#spin-button').click(); true`);
   await delay(80);
   const firstTarget = await evaluate(`document.querySelector('#wheel').style.transform`);
@@ -105,6 +107,7 @@ test('repeat presses boost the active spin while keeping a ten second cap', asyn
   const duration = await evaluate(`parseFloat(document.querySelector('#wheel').style.getPropertyValue('--spin-duration'))`);
   assert.notEqual(secondTarget, firstTarget);
   assert.ok(duration > 6800 && duration <= 10000);
+  assert.match(await evaluate(`document.querySelector('#boost-count').textContent`), /0/);
 });
 
 test('timer updates preserve keyboard focus', async () => {
