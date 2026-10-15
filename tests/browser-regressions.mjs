@@ -87,10 +87,14 @@ test('task mutation controls are disabled throughout a spin', async () => {
 test('timer updates preserve keyboard focus', async () => {
   await resetTasks();
   await evaluate(`document.querySelector('#spin-button').click(); true`);
-  await waitUntil(`!document.querySelector('#selection-panel').hidden`, 10000);
+  await waitUntil(`!document.querySelector('#selection-modal').hidden`, 10000);
   assert.equal(await evaluate(`document.querySelector('#selection-modal').hidden`), false);
+  assert.equal(await evaluate(`document.querySelector('#selection-panel').hidden`), true);
   assert.ok(await evaluate(`document.querySelectorAll('.confetti-piece').length`) >= 24);
   assert.match(await evaluate(`document.querySelector('.focus-reaction').textContent`), /ура|фу|погнали|выпало/i);
+  await evaluate(`document.querySelector('[data-confirm-task]').click(); true`);
+  assert.equal(await evaluate(`document.querySelector('#selection-modal').hidden`), true);
+  assert.equal(await evaluate(`document.querySelector('#selection-panel').hidden`), false);
   await evaluate(`document.querySelector('[data-duration="15"]').click(); true`);
   await waitUntil(`Boolean(document.querySelector('[data-timer-action="pause"]'))`);
   await evaluate(`document.querySelector('[data-timer-action="pause"]').focus(); true`);

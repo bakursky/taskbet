@@ -1,14 +1,14 @@
 export const STORAGE_KEY = 'spinflow.tasks';
 
 export const PALETTE = [
-  '#9EAEFF',
-  '#F3A8C7',
-  '#78D8B8',
-  '#FFD078',
-  '#B694F2',
-  '#67CBE2',
-  '#F59A7B',
-  '#C8DE72',
+  '#8298FF',
+  '#FF83B5',
+  '#49D9AA',
+  '#FFBF3F',
+  '#AB7BFF',
+  '#3BC7EA',
+  '#FF7C58',
+  '#BADA42',
 ];
 
 export const SAMPLE_TASKS = [

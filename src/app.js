@@ -28,6 +28,7 @@ const elements = {
   summary: document.querySelector('#summary-copy'),
   progress: document.querySelector('#summary-progress'),
   modal: document.querySelector('#selection-modal'),
+  result: document.querySelector('#result-modal-panel'),
   selection: document.querySelector('#selection-panel'),
   confetti: document.querySelector('#confetti-layer'),
   wheel: document.querySelector('#wheel'),
@@ -133,12 +134,6 @@ function renderTasks() {
   setMutationControls(isSpinning);
 }
 
-function escapeHtml(value) {
-  const span = document.createElement('span');
-  span.textContent = value;
-  return span.innerHTML;
-}
-
 elements.form.addEventListener('submit', (event) => {
   event.preventDefault();
   try {
@@ -166,20 +161,43 @@ function clearSelection() {
   selectedTaskId = null;
   timerState = null;
   elements.modal.hidden = true;
+  elements.result.hidden = true;
   elements.selection.hidden = true;
+  elements.result.replaceChildren();
   elements.selection.replaceChildren();
   document.body.classList.remove('modal-open');
 }
 
 function showSelection(task) {
   elements.modal.hidden = false;
-  elements.selection.hidden = false;
+  elements.result.hidden = false;
+  elements.selection.hidden = true;
   timerState = null;
-  elements.selection.innerHTML = `
+  elements.result.innerHTML = `
     <button class="modal-close" type="button" data-modal-close aria-label="Закрыть">×</button>
     <div class="focus-task">
       <span class="focus-dot"></span>
       <div><span>Тебе выпало</span><strong data-selected-title></strong><em class="focus-reaction"></em></div>
+    </div>
+    <button class="confirm-task" type="button" data-confirm-task>Включить таймер <span>→</span></button>`;
+  elements.result.querySelector('.focus-dot').style.setProperty('--selection-color', task.color);
+  elements.result.querySelector('[data-selected-title]').textContent = task.title;
+  elements.result.querySelector('.focus-reaction').textContent = REACTIONS[Math.floor(Math.random() * REACTIONS.length)];
+  document.body.classList.add('modal-open');
+  celebrate();
+  elements.result.querySelector('[data-confirm-task]')?.focus({ preventScroll: true });
+}
+
+function showDurationPicker(task) {
+  elements.modal.hidden = true;
+  elements.result.hidden = true;
+  elements.result.replaceChildren();
+  document.body.classList.remove('modal-open');
+  elements.selection.hidden = false;
+  elements.selection.innerHTML = `
+    <div class="focus-task compact-focus-task">
+      <span class="focus-dot"></span>
+      <div><span>Твоя задача</span><strong data-selected-title></strong></div>
     </div>
     <div class="duration-picker">
       <span class="duration-label">Сколько фокуса?</span>
@@ -193,9 +211,7 @@ function showSelection(task) {
     </div>`;
   elements.selection.querySelector('.focus-dot').style.setProperty('--selection-color', task.color);
   elements.selection.querySelector('[data-selected-title]').textContent = task.title;
-  elements.selection.querySelector('.focus-reaction').textContent = REACTIONS[Math.floor(Math.random() * REACTIONS.length)];
-  document.body.classList.add('modal-open');
-  celebrate();
+  elements.selection.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
   elements.selection.querySelector('[data-duration]')?.focus({ preventScroll: true });
 }
 
@@ -280,11 +296,18 @@ function beginFocus(value) {
   elements.status.textContent = `Таймер запущен на ${minutes} минут`;
 }
 
-elements.selection.addEventListener('click', (event) => {
+elements.result.addEventListener('click', (event) => {
   if (event.target.closest('[data-modal-close]')) {
     clearSelection();
     return;
   }
+  if (event.target.closest('[data-confirm-task]')) {
+    const task = tasks.find(({ id }) => id === selectedTaskId);
+    if (task) showDurationPicker(task);
+  }
+});
+
+elements.selection.addEventListener('click', (event) => {
   const duration = event.target.closest('[data-duration]');
   if (duration) beginFocus(duration.dataset.duration);
 
