@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
+import * as taskStore from '../src/task-store.js';
+
+const {
   SAMPLE_TASKS,
   completeTaskWithReward,
   createTask,
@@ -11,7 +13,7 @@ import {
   removeTask,
   saveTasks,
   toggleTask,
-} from '../src/task-store.js';
+} = taskStore;
 
 const memoryStorage = (initial = {}) => {
   const values = new Map(Object.entries(initial));
@@ -56,6 +58,16 @@ test('removes a task without mutating input', () => {
   ];
   assert.deepEqual(removeTask(tasks, '1').map(({ id }) => id), ['2']);
   assert.equal(tasks.length, 2);
+});
+
+test('renames a task while preserving its progress and reward state', () => {
+  assert.equal(typeof taskStore.renameTask, 'function', 'renameTask must be exported');
+  const task = { id: '1', title: 'Старое имя', color: '#fff', completed: true, rewarded: true };
+  const renamed = taskStore.renameTask([task], '1', '  Новое   имя  ');
+
+  assert.deepEqual(renamed, [{ ...task, title: 'Новое имя' }]);
+  assert.equal(task.title, 'Старое имя');
+  assert.throws(() => taskStore.renameTask([task], '1', '   '), /empty/i);
 });
 
 test('a task grants a boost only on its first completion', () => {

@@ -4,6 +4,7 @@ import {
   completeTaskWithReward,
   getActiveTasks,
   loadTasks,
+  renameTask,
   removeTask,
   saveTasks,
   toggleTask,
@@ -87,7 +88,7 @@ function persistAndRender(message = '') {
 function setMutationControls(disabled) {
   elements.input.disabled = disabled;
   elements.form.querySelector('button').disabled = disabled;
-  elements.list.querySelectorAll('.task-check, .task-delete').forEach((button) => {
+  elements.list.querySelectorAll('.task-check, .task-edit, .task-delete').forEach((button) => {
     button.disabled = disabled;
   });
 }
@@ -122,13 +123,24 @@ function renderTasks() {
     title.className = 'task-title';
     title.textContent = task.title;
 
+    const actions = document.createElement('div');
+    actions.className = 'task-actions';
+
+    const edit = document.createElement('button');
+    edit.className = 'task-edit';
+    edit.type = 'button';
+    edit.dataset.action = 'edit';
+    edit.setAttribute('aria-label', `Изменить ${task.title}`);
+    edit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+
     const remove = document.createElement('button');
     remove.className = 'task-delete';
     remove.type = 'button';
     remove.dataset.action = 'delete';
     remove.setAttribute('aria-label', `Удалить ${task.title}`);
     remove.textContent = '×';
-    row.append(check, title, remove);
+    actions.append(edit, remove);
+    row.append(check, title, actions);
     elements.list.append(row);
   });
 
@@ -159,6 +171,10 @@ elements.list.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-action]');
   const row = event.target.closest('[data-task-id]');
   if (!button || !row) return;
+  if (button.dataset.action === 'edit') {
+    startTaskEdit(row, row.dataset.taskId);
+    return;
+  }
   if (button.dataset.action === 'toggle') {
     const task = tasks.find(({ id }) => id === row.dataset.taskId);
     if (task?.completed) {
@@ -172,6 +188,50 @@ elements.list.addEventListener('click', (event) => {
   if (button.dataset.action === 'delete') tasks = removeTask(tasks, row.dataset.taskId);
   persistAndRender(button.dataset.action === 'delete' ? 'Задача удалена' : 'Статус задачи изменён');
 });
+
+function startTaskEdit(row, id) {
+  if (isSpinning) return;
+  const task = tasks.find((item) => item.id === id);
+  const title = row.querySelector('.task-title');
+  if (!task || !title) return;
+
+  const input = document.createElement('input');
+  input.className = 'task-title-input';
+  input.maxLength = 80;
+  input.value = task.title;
+  title.replaceWith(input);
+  let settled = false;
+
+  const cancel = () => {
+    if (settled) return;
+    settled = true;
+    renderTasks();
+  };
+  const commit = () => {
+    if (settled) return;
+    settled = true;
+    try {
+      tasks = renameTask(tasks, id, input.value);
+      persistAndRender('Название задачи изменено');
+    } catch {
+      renderTasks();
+      elements.status.textContent = 'Название задачи не может быть пустым';
+    }
+  };
+
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      commit();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      cancel();
+    }
+  });
+  input.addEventListener('blur', commit);
+  input.focus();
+  input.select();
+}
 
 function renderEmptyTimer() {
   elements.selection.hidden = false;
@@ -372,7 +432,7 @@ function finishSpin(task) {
   spinFinishTimeout = null;
   spinSession = null;
   isSpinning = false;
-  elements.spin.querySelector('span').textContent = 'Крутить колесо';
+  setSpinButton(false);
   if (!getActiveTasks(tasks).some(({ id }) => id === task.id)) {
     elements.wheel.classList.remove('is-spinning');
     elements.wheelStage.classList.remove('is-spinning');
@@ -417,6 +477,7 @@ function boostSpin(active) {
   boosts -= 1;
   saveBoosts(storage, boosts);
   elements.boostCount.textContent = `Подкрутки: ${boosts}`;
+  setSpinButton(true);
   const now = performance.now();
   spinSession.deadline = extendSpinDeadline(spinSession.startedAt, spinSession.deadline);
   const remainingMs = Math.max(120, spinSession.deadline - now);
@@ -441,7 +502,7 @@ function spinWheel() {
   clearSelection();
   isSpinning = true;
   elements.spin.disabled = boosts === 0;
-  elements.spin.querySelector('span').textContent = 'Подкрутить';
+  setSpinButton(true);
   setMutationControls(true);
   const spin = chooseSpin(rotationDegrees, active.length);
   rotationDegrees = spin.finalDegrees;
@@ -460,6 +521,19 @@ function spinWheel() {
   playRatchet(SPIN_DURATION_MS);
   animateSpin(rotationDegrees, SPIN_DURATION_MS);
   scheduleSpinFinish(task, SPIN_DURATION_MS);
+}
+
+function setSpinButton(spinning) {
+  elements.spin.querySelector('[data-spin-label]').textContent = spinning ? 'Подкрутить' : 'Крутить колесо';
+  elements.spin.querySelector('[data-spin-boosts]')?.remove();
+  if (!spinning) return;
+
+  const badge = document.createElement('span');
+  badge.className = 'spin-boost-badge';
+  badge.dataset.spinBoosts = '';
+  badge.setAttribute('aria-label', `${boosts} подкруток`);
+  badge.textContent = String(boosts);
+  elements.spin.querySelector('svg').before(badge);
 }
 
 elements.wheel.style.setProperty('--spin-duration', `${SPIN_DURATION_MS}ms`);

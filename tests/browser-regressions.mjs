@@ -89,11 +89,26 @@ test('task mutation controls are disabled throughout a spin', async () => {
   await resetTasks();
   await evaluate(`document.querySelector('#spin-button').click(); true`);
   assert.equal(await evaluate(`document.querySelector('#task-input').disabled`), true);
-  assert.equal(await evaluate(`[...document.querySelectorAll('.task-check,.task-delete,#task-form button')].every((button) => button.disabled)`), true);
+  assert.equal(await evaluate(`[...document.querySelectorAll('.task-check,.task-edit,.task-delete,#task-form button')].every((button) => button.disabled)`), true);
+});
+
+test('task names can be edited inline and update the wheel', async () => {
+  await resetTasks();
+  await evaluate(`document.querySelector('.task-edit').click(); true`);
+  assert.equal(await evaluate(`document.activeElement?.classList.contains('task-title-input')`), true);
+  await evaluate(`(() => {
+    const input = document.querySelector('.task-title-input');
+    input.value = '  Новый   текст  ';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    return true;
+  })()`);
+  assert.equal(await evaluate(`document.querySelector('.task-title').textContent`), 'Новый текст');
+  assert.match(await evaluate(`document.querySelector('#wheel').textContent`), /Новый текст/);
 });
 
 test('repeat presses boost the active spin while keeping a ten second cap', async () => {
   await resetTasks();
+  assert.equal(await evaluate(`Boolean(document.querySelector('[data-spin-boosts]'))`), false);
   await evaluate(`document.querySelector('.task-check').click(); true`);
   assert.match(await evaluate(`document.querySelector('#boost-count').textContent`), /1/);
   await evaluate(`document.querySelector('#spin-button').click(); true`);
@@ -101,6 +116,7 @@ test('repeat presses boost the active spin while keeping a ten second cap', asyn
   const firstTarget = await evaluate(`document.querySelector('#wheel').style.transform`);
   assert.equal(await evaluate(`document.querySelector('#spin-button').disabled`), false);
   assert.match(await evaluate(`document.querySelector('#spin-button span').textContent`), /Подкрутить/);
+  assert.equal(await evaluate(`document.querySelector('[data-spin-boosts]').textContent.trim()`), '1');
   await evaluate(`document.querySelector('#spin-button').click(); true`);
   await delay(80);
   const secondTarget = await evaluate(`document.querySelector('#wheel').style.transform`);
@@ -108,6 +124,7 @@ test('repeat presses boost the active spin while keeping a ten second cap', asyn
   assert.notEqual(secondTarget, firstTarget);
   assert.ok(duration > 6800 && duration <= 10000);
   assert.match(await evaluate(`document.querySelector('#boost-count').textContent`), /0/);
+  assert.equal(await evaluate(`document.querySelector('[data-spin-boosts]').textContent.trim()`), '0');
 });
 
 test('timer updates preserve keyboard focus', async () => {

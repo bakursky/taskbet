@@ -54,6 +54,12 @@ export function removeTask(tasks, id) {
   return tasks.filter((task) => task.id !== id);
 }
 
+export function renameTask(tasks, id, title) {
+  const normalized = normalizeTitle(title);
+  if (!normalized) throw new Error('Task title cannot be empty');
+  return tasks.map((task) => task.id === id ? { ...task, title: normalized } : task);
+}
+
 function isValidTask(task) {
   return task && typeof task.id === 'string' && normalizeTitle(task.title)
     && typeof task.color === 'string' && typeof task.completed === 'boolean';
