@@ -14,10 +14,16 @@
 <body>
   <main class="app-shell">
     <header class="topbar">
-      <a class="brand" href="#" aria-label="Ставки на дело — на главную">
-        <svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M22 12a1 1 0 0 1-10 0a1 1 0 0 0-10 0"/><path d="M7 20.7a1 1 0 1 1 5-8.7a1 1 0 1 0 5-8.6"/><path d="M7 3.3a1 1 0 1 1 5 8.6a1 1 0 1 0 5 8.6"/><circle cx="12" cy="12" r="10"/></g></svg>
-        <span>Ставки на дело</span>
-      </a>
+      <div class="brand-group">
+        <a class="brand" href="#" aria-label="Ставки на дело — на главную">
+          <svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M22 12a1 1 0 0 1-10 0a1 1 0 0 0-10 0"/><path d="M7 20.7a1 1 0 1 1 5-8.7a1 1 0 1 0 5-8.6"/><path d="M7 3.3a1 1 0 1 1 5 8.6a1 1 0 1 0 5 8.6"/><circle cx="12" cy="12" r="10"/></g></svg>
+          <span>Ставки на дело</span>
+        </a>
+        <a class="header-pill social-pill" data-instagram-link href="https://www.instagram.com/bratan.dev/" target="_blank" rel="noopener noreferrer" aria-label="Instagram bratan.dev">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" class="social-dot"/></svg>
+          <span>@bratan.dev</span>
+        </a>
+      </div>
       <div class="header-actions">
         <div class="header-pill boost-pill">↻ <span id="boost-count">Подкрутки: 0</span></div>
         <div class="header-pill"><span class="pulse-dot"></span><span id="active-count">0 задач</span></div>
@@ -68,6 +74,28 @@
     </section>
 
     <section id="selection-panel" class="selection-panel" aria-label="Фокус-таймер"></section>
+
+    <section class="projects-grid" aria-label="Другие проекты автора">
+      <a class="project-card" data-project-link href="https://t.me/llm_arena_bot" target="_blank" rel="noopener noreferrer">
+        <img src="assets/arena-ai.png" width="768" height="768" loading="lazy" alt="Логотип проекта Арена ИИ">
+        <span class="project-copy">
+          <span class="project-eyebrow">Telegram-бот</span>
+          <strong>Арена ИИ</strong>
+          <span>Несколько топовых ИИ-моделей отвечают на один вопрос в разных режимах соперничества — чтобы получить больше пользы, чем от одной нейросети.</span>
+        </span>
+        <span class="project-arrow" aria-hidden="true">↗</span>
+      </a>
+
+      <a class="project-card" data-project-link href="https://100words.app/" target="_blank" rel="noopener noreferrer">
+        <img src="assets/100words.png" width="96" height="96" loading="lazy" alt="Логотип проекта 100words">
+        <span class="project-copy">
+          <span class="project-eyebrow">Личный дневник</span>
+          <strong>100words</strong>
+          <span>Одно простое правило — писать 100 слов в день. Без рекламы, алгоритмов и текстов от ИИ. Только вы и ваши мысли.</span>
+        </span>
+        <span class="project-arrow" aria-hidden="true">↗</span>
+      </a>
+    </section>
 
     <p id="status" class="sr-only" role="status" aria-live="polite"></p>
   </main>

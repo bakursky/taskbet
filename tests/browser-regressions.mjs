@@ -73,6 +73,48 @@ test('Taskbet branding and empty timer panel are visible on load', async () => {
   assert.match(await evaluate(`document.querySelector('#selection-panel').textContent`), /Ставок нет/);
 });
 
+test('self-promo links and project images are available to visitors', async () => {
+  await resetTasks();
+  assert.equal(
+    await evaluate(`document.querySelector('[data-instagram-link]')?.href`),
+    'https://www.instagram.com/bratan.dev/',
+  );
+  assert.equal(
+    await evaluate(`document.querySelector('[data-instagram-link]')?.parentElement?.classList.contains('brand-group')`),
+    true,
+  );
+  assert.deepEqual(
+    await evaluate(`(() => {
+      const style = getComputedStyle(document.querySelector('[data-instagram-link]'));
+      return { background: style.backgroundColor, color: style.color };
+    })()`),
+    { background: 'rgb(244, 246, 255)', color: 'rgb(16, 27, 57)' },
+  );
+  assert.deepEqual(
+    await evaluate(`[...document.querySelectorAll('[data-project-link]')].map((link) => link.href)`),
+    ['https://t.me/llm_arena_bot', 'https://100words.app/'],
+  );
+  assert.equal(
+    await evaluate(`[...document.querySelectorAll('.project-card img')].every((image) => image.complete && image.naturalWidth > 0)`),
+    true,
+  );
+});
+
+test('promo additions do not cause horizontal overflow on mobile', async () => {
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 430, height: 900, deviceScaleFactor: 1, mobile: true });
+  await resetTasks();
+  const layout = await evaluate(`(() => ({
+    innerWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    offenders: [...document.querySelectorAll('body *')]
+      .filter((element) => element.getBoundingClientRect().right > innerWidth + 1)
+      .slice(0, 8)
+      .map((element) => ({ className: element.className?.baseVal ?? element.className, right: Math.round(element.getBoundingClientRect().right) }))
+  }))()`);
+  assert.equal(layout.scrollWidth, layout.innerWidth, JSON.stringify(layout));
+  await cdp('Emulation.clearDeviceMetricsOverride');
+});
+
 test('task titles cannot create executable attributes', async () => {
   await resetTasks();
   await evaluate(`(() => {
