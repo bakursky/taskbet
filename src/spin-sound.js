@@ -1,4 +1,5 @@
 let audioContext;
+let activeOscillators = [];
 
 export function createRatchetSchedule(durationMs, clickCount = 48) {
   const audibleDuration = Math.max(0, durationMs - 180);
@@ -14,6 +15,10 @@ export function playRatchet(durationMs) {
 
   audioContext ??= new AudioContextClass();
   const scheduleClicks = () => {
+    activeOscillators.forEach((oscillator) => {
+      try { oscillator.stop(); } catch {}
+    });
+    activeOscillators = [];
     const start = audioContext.currentTime + 0.015;
     const clicks = createRatchetSchedule(durationMs);
 
@@ -28,6 +33,10 @@ export function playRatchet(durationMs) {
       gain.gain.setValueAtTime(0.024, time);
       gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.018);
       oscillator.connect(gain).connect(audioContext.destination);
+      activeOscillators.push(oscillator);
+      oscillator.addEventListener('ended', () => {
+        activeOscillators = activeOscillators.filter((item) => item !== oscillator);
+      }, { once: true });
       oscillator.start(time);
       oscillator.stop(time + 0.02);
     });

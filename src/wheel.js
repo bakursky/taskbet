@@ -1,6 +1,8 @@
 const NS = 'http://www.w3.org/2000/svg';
 const CENTER = 210;
 export const SPIN_DURATION_MS = 6800;
+export const MAX_SPIN_DURATION_MS = 10000;
+export const SPIN_BOOST_MS = 1000;
 
 const normalizeDegrees = (degrees) => ((degrees % 360) + 360) % 360;
 const polar = (radius, degrees) => {
@@ -48,6 +50,19 @@ export function chooseSpin(currentDegrees, count, random = Math.random) {
   const currentModulo = normalizeDegrees(currentDegrees);
   const delta = normalizeDegrees(targetModulo - currentModulo);
   return { finalDegrees: currentDegrees + turns * 360 + delta, winningIndex };
+}
+
+export function chooseBoost(currentDegrees, count, random = Math.random) {
+  if (!Number.isInteger(count) || count < 1) throw new RangeError('Wheel requires a task');
+  const winningIndex = Math.min(count - 1, Math.floor(random() * count));
+  const slice = 360 / count;
+  const targetModulo = normalizeDegrees(-(winningIndex + 0.5) * slice);
+  const delta = normalizeDegrees(targetModulo - normalizeDegrees(currentDegrees));
+  return { finalDegrees: currentDegrees + 360 + delta, winningIndex };
+}
+
+export function extendSpinDeadline(startedAt, currentDeadline, extensionMs = SPIN_BOOST_MS) {
+  return Math.min(startedAt + MAX_SPIN_DURATION_MS, currentDeadline + extensionMs);
 }
 
 function svgElement(name, attributes = {}) {

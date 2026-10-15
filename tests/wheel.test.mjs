@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { chooseSpin, describeSector, getLabelRotation, getWinningIndex } from '../src/wheel.js';
+import { chooseBoost, chooseSpin, describeSector, extendSpinDeadline, getLabelRotation, getWinningIndex } from '../src/wheel.js';
 
 test('describes valid closed SVG sectors for one, two, and seven slices', () => {
   for (const count of [1, 2, 7]) {
@@ -44,6 +44,22 @@ test('always selects the only active task', () => {
     assert.equal(spin.winningIndex, 0);
     assert.equal(getWinningIndex(spin.finalDegrees, 1), 0);
   }
+});
+
+test('repeat pushes extend the spin but never beyond ten seconds', () => {
+  const startedAt = 1_000;
+  let deadline = startedAt + 6_800;
+  deadline = extendSpinDeadline(startedAt, deadline);
+  assert.equal(deadline, 8_800);
+  for (let index = 0; index < 20; index += 1) deadline = extendSpinDeadline(startedAt, deadline);
+  assert.equal(deadline, 11_000);
+});
+
+test('a repeat push adds turns and can select a new task', () => {
+  const boosted = chooseBoost(45, 4, () => 0.6);
+  assert.equal(boosted.winningIndex, 2);
+  assert.equal(getWinningIndex(boosted.finalDegrees, 4), 2);
+  assert.ok(boosted.finalDegrees >= 45 + 360);
 });
 
 test('rotates labels radially from the outer edge toward the center', () => {

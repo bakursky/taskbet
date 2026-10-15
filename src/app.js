@@ -7,7 +7,7 @@ import {
   saveTasks,
   toggleTask,
 } from './task-store.js';
-import { SPIN_DURATION_MS, chooseSpin, renderWheel } from './wheel.js';
+import { MAX_SPIN_DURATION_MS, SPIN_DURATION_MS, chooseBoost, chooseSpin, extendSpinDeadline, renderWheel } from './wheel.js';
 import { playRatchet } from './spin-sound.js';
 import {
   createTimer,
@@ -52,6 +52,8 @@ let isSpinning = false;
 let timerState = null;
 let timerInterval = null;
 let confettiTimeout = null;
+let spinSession = null;
+let spinFinishTimeout = null;
 
 const REACTIONS = [
   'Ура! Погнали.',
@@ -130,7 +132,7 @@ function renderTasks() {
   elements.activeCount.textContent = `${active.length} ${taskWord(active.length)}`;
   elements.summary.textContent = tasks.length ? `${done} из ${tasks.length} выполнено` : 'Колесо ждёт';
   elements.progress.style.width = tasks.length ? `${done / tasks.length * 100}%` : '0%';
-  elements.spin.disabled = active.length === 0 || isSpinning;
+  elements.spin.disabled = active.length === 0 || Boolean(isSpinning && spinSession?.deadline >= spinSession?.startedAt + MAX_SPIN_DURATION_MS);
   renderWheel(elements.wheel, active, rotationDegrees);
   setMutationControls(isSpinning);
 }
@@ -350,7 +352,11 @@ elements.selection.addEventListener('submit', (event) => {
 });
 
 function finishSpin(task) {
+  window.clearTimeout(spinFinishTimeout);
+  spinFinishTimeout = null;
+  spinSession = null;
   isSpinning = false;
+  elements.spin.querySelector('span').textContent = 'Крутить колесо';
   if (!getActiveTasks(tasks).some(({ id }) => id === task.id)) {
     elements.wheel.classList.remove('is-spinning');
     elements.wheelStage.classList.remove('is-spinning');
@@ -366,38 +372,74 @@ function finishSpin(task) {
   elements.status.textContent = `Выбрана задача: ${task.title}`;
 }
 
+function currentWheelDegrees() {
+  const transform = getComputedStyle(elements.wheel).transform;
+  if (!transform || transform === 'none') return 0;
+  const values = transform.match(/matrix\(([^)]+)\)/)?.[1].split(',').map(Number);
+  return values ? Math.atan2(values[1], values[0]) * 180 / Math.PI : 0;
+}
+
+function animateSpin(targetDegrees, durationMs) {
+  const currentDegrees = currentWheelDegrees();
+  elements.wheel.classList.remove('is-spinning');
+  elements.wheel.style.transform = `rotate(${currentDegrees}deg)`;
+  elements.wheel.getBoundingClientRect();
+  elements.wheel.style.setProperty('--spin-duration', `${durationMs}ms`);
+  elements.wheel.classList.add('is-spinning');
+  requestAnimationFrame(() => {
+    elements.wheel.style.transform = `rotate(${targetDegrees}deg)`;
+  });
+}
+
+function scheduleSpinFinish(task, delayMs) {
+  window.clearTimeout(spinFinishTimeout);
+  spinFinishTimeout = window.setTimeout(() => finishSpin(task), delayMs + 80);
+}
+
+function boostSpin(active) {
+  const now = performance.now();
+  spinSession.deadline = extendSpinDeadline(spinSession.startedAt, spinSession.deadline);
+  const remainingMs = Math.max(120, spinSession.deadline - now);
+  const boost = chooseBoost(currentWheelDegrees(), active.length);
+  rotationDegrees = boost.finalDegrees;
+  const task = active[boost.winningIndex];
+  spinSession.task = task;
+  elements.spin.disabled = spinSession.deadline >= spinSession.startedAt + MAX_SPIN_DURATION_MS;
+  animateSpin(rotationDegrees, remainingMs);
+  playRatchet(remainingMs);
+  scheduleSpinFinish(task, remainingMs);
+  elements.status.textContent = elements.spin.disabled ? 'Максимум — 10 секунд' : 'Подкручено!';
+}
+
 function spinWheel() {
   const active = getActiveTasks(tasks);
-  if (isSpinning || !active.length) return;
+  if (!active.length) return;
+  if (isSpinning) {
+    if (!elements.spin.disabled) boostSpin(active);
+    return;
+  }
   clearSelection();
   isSpinning = true;
-  elements.spin.disabled = true;
+  elements.spin.disabled = false;
+  elements.spin.querySelector('span').textContent = 'Подкрутить';
   setMutationControls(true);
   const spin = chooseSpin(rotationDegrees, active.length);
   rotationDegrees = spin.finalDegrees;
   const task = active[spin.winningIndex];
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  elements.wheel.classList.toggle('is-spinning', !reducedMotion);
-  elements.wheelStage.classList.toggle('is-spinning', !reducedMotion);
-  if (!reducedMotion) playRatchet(SPIN_DURATION_MS);
-  requestAnimationFrame(() => {
-    elements.wheel.style.transform = `rotate(${rotationDegrees}deg)`;
-  });
+  const startedAt = performance.now();
+  spinSession = { startedAt, deadline: startedAt + SPIN_DURATION_MS, task };
 
   if (reducedMotion) {
+    elements.wheel.style.transform = `rotate(${rotationDegrees}deg)`;
     finishSpin(task);
     return;
   }
 
-  let finished = false;
-  const complete = () => {
-    if (finished) return;
-    finished = true;
-    finishSpin(task);
-  };
-  elements.wheel.addEventListener('transitionend', complete, { once: true });
-  window.setTimeout(complete, SPIN_DURATION_MS + 400);
+  elements.wheelStage.classList.add('is-spinning');
+  playRatchet(SPIN_DURATION_MS);
+  animateSpin(rotationDegrees, SPIN_DURATION_MS);
+  scheduleSpinFinish(task, SPIN_DURATION_MS);
 }
 
 elements.wheel.style.setProperty('--spin-duration', `${SPIN_DURATION_MS}ms`);
